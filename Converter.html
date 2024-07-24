@@ -10,7 +10,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            height: 150vh;
             margin: 0;
             background-color: #e9ecef;
             transition: background-color 0.3s;
@@ -21,7 +21,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 600px;
+            max-width: 800px;
             text-align: center;
             transition: background-color 0.3s, color 0.3s;
         }
@@ -123,6 +123,11 @@
         .container, .datetime {
             position: relative;
         }
+        .chart-container {
+            margin-top: 20px;
+            width: 100%;
+            max-height: 400px;
+        }
         @media (max-width: 600px) {
             .container {
                 padding: 15px;
@@ -140,8 +145,10 @@
         <h1>Currency Converter</h1>
         <input type="number" id="amount" placeholder="Amount" />
         <div class="currency-select">
+            <input type="text" id="fromCurrencySearch" placeholder="Search from currency..." onkeyup="filterCurrencies('from')" />
             <select id="fromCurrency"></select>
             <button class="swap-button" onclick="swapCurrencies()">Swap</button>
+            <input type="text" id="toCurrencySearch" placeholder="Search to currency..." onkeyup="filterCurrencies('to')" />
             <select id="toCurrency"></select>
         </div>
         <input type="date" id="date" />
@@ -153,13 +160,18 @@
         <p id="error" class="error"></p>
         <div id="history" class="history"></div>
         <div id="analytics" class="analytics"></div>
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const apiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'; // Replace with actual API URL
         const history = [];
         let exchangeRates = {};
         let isDarkMode = false;
+        let chart;
 
         document.addEventListener('DOMContentLoaded', () => {
             populateCurrencyOptions();
@@ -205,13 +217,14 @@
         function fetchExchangeRates(date = '') {
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error').style.display = 'none';
-            const url = date ? `${apiUrl}/${date}` : apiUrl;
+            const url = date ? `${apiUrl}?date=${date}` : apiUrl;
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     exchangeRates = data.rates;
                     document.getElementById('loading').style.display = 'none';
                     updateAnalytics();
+                    updateChart();
                 })
                 .catch(error => {
                     document.getElementById('loading').style.display = 'none';
@@ -310,6 +323,44 @@
             `;
         }
 
+        function updateChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            if (chart) chart.destroy();
+
+            const labels = Object.keys(exchangeRates);
+            const data = Object.values(exchangeRates);
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Exchange Rates',
+                        data: data,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return `${tooltipItem.label}: ${tooltipItem.raw.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         function updateHistory() {
             const historyContainer = document.getElementById('history');
             historyContainer.innerHTML = '<h2>Conversion History</h2>';
@@ -319,6 +370,18 @@
                 historyItem.innerText = item;
                 historyContainer.appendChild(historyItem);
             });
+        }
+
+        function filterCurrencies(type) {
+            const searchInput = document.getElementById(`${type}CurrencySearch`).value.toLowerCase();
+            const select = document.getElementById(`${type}Currency`);
+            const options = select.options;
+
+            for (let i = 0; i < options.length; i++) {
+                const option = options[i];
+                const text = option.text.toLowerCase();
+                option.style.display = text.includes(searchInput) ? 'block' : 'none';
+            }
         }
     </script>
 </body>
