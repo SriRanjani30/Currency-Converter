@@ -13,6 +13,7 @@
             height: 100vh;
             background-color: #e9ecef;
             margin: 0;
+            transition: background-color 0.3s;
         }
         .container {
             background: #ffffff;
@@ -20,8 +21,9 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             text-align: center;
+            transition: background-color 0.3s, color 0.3s;
         }
         h1 {
             margin-bottom: 20px;
@@ -49,12 +51,11 @@
         button:hover {
             background-color: #0056b3;
         }
-        .swap-button {
+        .swap-button, .dark-mode-button {
             background-color: #28a745;
             color: #ffffff;
-            margin-top: 10px;
         }
-        .swap-button:hover {
+        .swap-button:hover, .dark-mode-button:hover {
             background-color: #218838;
         }
         .error {
@@ -90,10 +91,32 @@
             flex: 1;
             margin: 0;
         }
+        .history {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .history-item {
+            padding: 5px 0;
+        }
+        .dark-mode {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .dark-mode input, .dark-mode select, .dark-mode button {
+            border-color: #6c757d;
+            background-color: #495057;
+            color: #ffffff;
+        }
+        .dark-mode .result {
+            color: #20c997;
+        }
+        .dark-mode .error {
+            color: #e74c3c;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="converterContainer">
         <h1>Currency Converter</h1>
         <input type="number" id="amount" placeholder="Amount" />
         <div class="currency-select">
@@ -101,16 +124,21 @@
             <button class="swap-button" onclick="swapCurrencies()">Swap</button>
             <select id="toCurrency"></select>
         </div>
+        <input type="date" id="date" />
         <button onclick="convert()">Convert</button>
         <button class="reset-button" onclick="resetFields()">Reset</button>
+        <button class="dark-mode-button" onclick="toggleDarkMode()">Toggle Dark Mode</button>
         <p id="result" class="result"></p>
         <p id="loading" class="loading">Fetching exchange rates...</p>
         <p id="error" class="error"></p>
+        <div id="history" class="history"></div>
     </div>
 
     <script>
         const apiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'; // Replace with actual API URL
+        const history = [];
         let exchangeRates = {};
+        let isDarkMode = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             populateCurrencyOptions();
@@ -118,27 +146,44 @@
         });
 
         function populateCurrencyOptions() {
-            const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'SEK', 'NZD', 'KRW', 'SGD', 'INR', 'MXN', 'ZAR'];
+            const currencies = [
+                { code: 'USD', name: 'US Dollar', symbol: '$' },
+                { code: 'EUR', name: 'Euro', symbol: '€' },
+                { code: 'GBP', name: 'British Pound', symbol: '£' },
+                { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+                { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+                { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+                { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+                { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+                { code: 'SEK', name: 'Swedish Krona', symbol: 'kr' },
+                { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$' },
+                { code: 'KRW', name: 'South Korean Won', symbol: '₩' },
+                { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+                { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+                { code: 'MXN', name: 'Mexican Peso', symbol: '$' },
+                { code: 'ZAR', name: 'South African Rand', symbol: 'R' }
+            ];
             const fromCurrencySelect = document.getElementById('fromCurrency');
             const toCurrencySelect = document.getElementById('toCurrency');
 
             currencies.forEach(currency => {
                 const optionFrom = document.createElement('option');
-                optionFrom.value = currency;
-                optionFrom.text = currency;
+                optionFrom.value = currency.code;
+                optionFrom.text = `${currency.code} (${currency.symbol})`;
                 fromCurrencySelect.add(optionFrom);
 
                 const optionTo = document.createElement('option');
-                optionTo.value = currency;
-                optionTo.text = currency;
+                optionTo.value = currency.code;
+                optionTo.text = `${currency.code} (${currency.symbol})`;
                 toCurrencySelect.add(optionTo);
             });
         }
 
-        function fetchExchangeRates() {
+        function fetchExchangeRates(date = '') {
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error').style.display = 'none';
-            fetch(apiUrl)
+            const url = date ? `${apiUrl}/${date}` : apiUrl;
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     exchangeRates = data.rates;
@@ -155,6 +200,7 @@
             const amount = parseFloat(document.getElementById('amount').value);
             const fromCurrency = document.getElementById('fromCurrency').value;
             const toCurrency = document.getElementById('toCurrency').value;
+            const date = document.getElementById('date').value;
 
             if (isNaN(amount) || amount <= 0) {
                 document.getElementById('result').innerText = '';
@@ -176,8 +222,14 @@
 
             const rate = exchangeRates[toCurrency] / exchangeRates[fromCurrency];
             const result = amount * rate;
-            document.getElementById('result').innerText = `${amount.toFixed(2)} ${fromCurrency} = ${result.toFixed(2)} ${toCurrency}`;
+            const resultText = `${amount.toFixed(2)} ${fromCurrency} = ${result.toFixed(2)} ${toCurrency}`;
+
+            document.getElementById('result').innerText = resultText;
             document.getElementById('error').innerText = '';
+
+            // Add to history
+            history.push(resultText);
+            updateHistory();
         }
 
         function swapCurrencies() {
@@ -197,6 +249,24 @@
             document.getElementById('toCurrency').value = 'EUR';
             document.getElementById('result').innerText = '';
             document.getElementById('error').innerText = '';
+            document.getElementById('date').value = '';
+        }
+
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            document.getElementById('converterContainer').classList.toggle('dark-mode', isDarkMode);
+        }
+
+        function updateHistory() {
+            const historyContainer = document.getElementById('history');
+            historyContainer.innerHTML = '<h2>Conversion History</h2>';
+            history.forEach(item => {
+                const historyItem = document.createElement('p');
+                historyItem.className = 'history-item';
+                historyItem.innerText = item;
+                historyContainer.appendChild(historyItem);
+            });
         }
     </script>
 </body>
