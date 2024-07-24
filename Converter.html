@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        input, select, button {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            display: none;
+            font-size: 1.2em;
+            color: #007bff;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Currency Converter</h1>
+        <input type="number" id="amount" placeholder="Amount" />
+        <select id="fromCurrency"></select>
+        <select id="toCurrency"></select>
+        <button onclick="convert()">Convert</button>
+        <p id="result"></p>
+        <p id="loading" class="loading">Loading...</p>
+    </div>
+
+    <script>
+        const apiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'; // Example API URL
+        let exchangeRates = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateCurrencyOptions();
+            fetchExchangeRates();
+        });
+
+        function populateCurrencyOptions() {
+            const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD'];
+            const fromCurrencySelect = document.getElementById('fromCurrency');
+            const toCurrencySelect = document.getElementById('toCurrency');
+
+            currencies.forEach(currency => {
+                const optionFrom = document.createElement('option');
+                optionFrom.value = currency;
+                optionFrom.text = currency;
+                fromCurrencySelect.add(optionFrom);
+
+                const optionTo = document.createElement('option');
+                optionTo.value = currency;
+                optionTo.text = currency;
+                toCurrencySelect.add(optionTo);
+            });
+        }
+
+        function fetchExchangeRates() {
+            document.getElementById('loading').style.display = 'block';
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    exchangeRates = data.rates;
+                    document.getElementById('loading').style.display = 'none';
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('result').innerText = 'Failed to fetch exchange rates.';
+                    console.error('Error fetching exchange rates:', error);
+                });
+        }
+
+        function convert() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const fromCurrency = document.getElementById('fromCurrency').value;
+            const toCurrency = document.getElementById('toCurrency').value;
+
+            if (isNaN(amount) || amount <= 0) {
+                document.getElementById('result').innerText = 'Please enter a valid amount.';
+                return;
+            }
+
+            if (fromCurrency === toCurrency) {
+                document.getElementById('result').innerText = 'Select different currencies.';
+                return;
+            }
+
+            if (!exchangeRates[fromCurrency] || !exchangeRates[toCurrency]) {
+                document.getElementById('result').innerText = 'Currency not supported.';
+                return;
+            }
+
+            const rate = exchangeRates[toCurrency] / exchangeRates[fromCurrency];
+            const result = amount * rate;
+            document.getElementById('result').innerText = `${amount} ${fromCurrency} = ${result.toFixed(2)} ${toCurrency}`;
+        }
+    </script>
+</body>
+</html>
