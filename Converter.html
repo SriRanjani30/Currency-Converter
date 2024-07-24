@@ -11,42 +11,84 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background-color: #e9ecef;
             margin: 0;
         }
         .container {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #343a40;
         }
         input, select, button {
             margin: 10px 0;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
             width: 100%;
+            box-sizing: border-box;
+        }
+        select {
+            background-color: #ffffff;
         }
         button {
             background-color: #007bff;
-            color: #fff;
-            cursor: pointer;
+            color: #ffffff;
             border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
         }
         button:hover {
             background-color: #0056b3;
         }
+        .swap-button {
+            background-color: #28a745;
+            color: #ffffff;
+            margin-top: 10px;
+        }
+        .swap-button:hover {
+            background-color: #218838;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .result {
+            font-size: 18px;
+            margin-top: 20px;
+            color: #28a745;
+        }
         .loading {
             display: none;
-            font-size: 1.2em;
+            font-size: 18px;
             color: #007bff;
+            margin-top: 10px;
         }
-        @media (max-width: 600px) {
-            .container {
-                padding: 10px;
-            }
+        .reset-button {
+            background-color: #6c757d;
+            color: #ffffff;
+            margin-top: 10px;
+        }
+        .reset-button:hover {
+            background-color: #5a6268;
+        }
+        .currency-select {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .currency-select select {
+            flex: 1;
+            margin: 0;
         }
     </style>
 </head>
@@ -54,15 +96,20 @@
     <div class="container">
         <h1>Currency Converter</h1>
         <input type="number" id="amount" placeholder="Amount" />
-        <select id="fromCurrency"></select>
-        <select id="toCurrency"></select>
+        <div class="currency-select">
+            <select id="fromCurrency"></select>
+            <button class="swap-button" onclick="swapCurrencies()">Swap</button>
+            <select id="toCurrency"></select>
+        </div>
         <button onclick="convert()">Convert</button>
-        <p id="result"></p>
-        <p id="loading" class="loading">Loading...</p>
+        <button class="reset-button" onclick="resetFields()">Reset</button>
+        <p id="result" class="result"></p>
+        <p id="loading" class="loading">Fetching exchange rates...</p>
+        <p id="error" class="error"></p>
     </div>
 
     <script>
-        const apiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'; // Example API URL
+        const apiUrl = 'https://api.exchangerate-api.com/v4/latest/USD'; // Replace with actual API URL
         let exchangeRates = {};
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -71,7 +118,7 @@
         });
 
         function populateCurrencyOptions() {
-            const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD'];
+            const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'SEK', 'NZD', 'KRW', 'SGD', 'INR', 'MXN', 'ZAR'];
             const fromCurrencySelect = document.getElementById('fromCurrency');
             const toCurrencySelect = document.getElementById('toCurrency');
 
@@ -90,6 +137,7 @@
 
         function fetchExchangeRates() {
             document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
             fetch(apiUrl)
                 .then(response => response.json())
                 .then(data => {
@@ -98,7 +146,7 @@
                 })
                 .catch(error => {
                     document.getElementById('loading').style.display = 'none';
-                    document.getElementById('result').innerText = 'Failed to fetch exchange rates.';
+                    document.getElementById('error').innerText = 'Failed to fetch exchange rates.';
                     console.error('Error fetching exchange rates:', error);
                 });
         }
@@ -109,23 +157,46 @@
             const toCurrency = document.getElementById('toCurrency').value;
 
             if (isNaN(amount) || amount <= 0) {
-                document.getElementById('result').innerText = 'Please enter a valid amount.';
+                document.getElementById('result').innerText = '';
+                document.getElementById('error').innerText = 'Please enter a valid amount.';
                 return;
             }
 
             if (fromCurrency === toCurrency) {
-                document.getElementById('result').innerText = 'Select different currencies.';
+                document.getElementById('result').innerText = '';
+                document.getElementById('error').innerText = 'Select different currencies.';
                 return;
             }
 
             if (!exchangeRates[fromCurrency] || !exchangeRates[toCurrency]) {
-                document.getElementById('result').innerText = 'Currency not supported.';
+                document.getElementById('result').innerText = '';
+                document.getElementById('error').innerText = 'Currency not supported.';
                 return;
             }
 
             const rate = exchangeRates[toCurrency] / exchangeRates[fromCurrency];
             const result = amount * rate;
-            document.getElementById('result').innerText = `${amount} ${fromCurrency} = ${result.toFixed(2)} ${toCurrency}`;
+            document.getElementById('result').innerText = `${amount.toFixed(2)} ${fromCurrency} = ${result.toFixed(2)} ${toCurrency}`;
+            document.getElementById('error').innerText = '';
+        }
+
+        function swapCurrencies() {
+            const fromCurrencySelect = document.getElementById('fromCurrency');
+            const toCurrencySelect = document.getElementById('toCurrency');
+
+            const temp = fromCurrencySelect.value;
+            fromCurrencySelect.value = toCurrencySelect.value;
+            toCurrencySelect.value = temp;
+
+            convert();
+        }
+
+        function resetFields() {
+            document.getElementById('amount').value = '';
+            document.getElementById('fromCurrency').value = 'USD';
+            document.getElementById('toCurrency').value = 'EUR';
+            document.getElementById('result').innerText = '';
+            document.getElementById('error').innerText = '';
         }
     </script>
 </body>
